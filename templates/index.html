@@ -27,7 +27,7 @@
 
     <div class="row">
       <div class="card">
-        <h2 style="margin:0 0 6px;">1) Test your API</h2>
+        <h2 style="margin:0 0 6px;">Test your API</h2>
         <p class="muted">Sends POST /sort with JSON: {"data":"example"}</p>
         <label>Data</label>
         <input id="data" value="example" />
@@ -36,12 +36,12 @@
       </div>
 
       <div class="card">
-        <h2 style="margin:0 0 6px;">2) Run the Supabase validator</h2>
+        <h2 style="margin:0 0 6px;">Run the Supabase validator</h2>
         <p class="muted">Calls this server’s /validate (server-to-server) so you avoid browser CORS issues.</p>
         <label>Email</label>
         <input id="email" placeholder="you@example.com" />
         <label>API URL</label>
-        <input id="apiUrl" placeholder="https://YOUR-SERVICE.onrender.com/sort" />
+        <input id="apiUrl" placeholder="https://api.com/sort" />
         <button id="btnVal" onclick="runValidator()">Validate</button>
         <pre id="valOut">Waiting…</pre>
       </div>
