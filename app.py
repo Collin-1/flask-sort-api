@@ -46,7 +46,7 @@ def validate():
 
     try:
         # let requests handle encoding; easier to inspect in logs if needed
-        r = requests.get(validator_base, params={"url": url, "email": email}, timeout=30)
+        r = requests.get(validator_base, params={"url": url, "email": email}, timeout=60)
         # return exactly what the validator returns
         return (r.text, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
     except requests.Timeout:
