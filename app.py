@@ -31,8 +31,11 @@ def health():
 # --- BONUS: server-side call to the validator (avoids CORS) ---
 @app.get("/validate")
 def validate():
-    email = request.args.get("email", "").strip()
-    url = request.args.get("url", "").strip()
+    # Accept already-encoded values from the UI; normalize by decoding then re-encoding
+    raw_email = request.args.get("email", "").strip()
+    raw_url = request.args.get("url", "").strip()
+    email = urllib.parse.unquote_plus(raw_email)
+    url = urllib.parse.unquote_plus(raw_url)
 
     if not email or not url:
         return jsonify({"error": "Missing email or url"}), 400
@@ -44,7 +47,7 @@ def validate():
 
     validator_base = "https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task"
     qs = urllib.parse.urlencode({"url": url, "email": email})
-    validator_url = f"https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task?url={url}&email={email}"
+    validator_url = f"{validator_base}?{qs}"
 
     try:
         r = requests.get(validator_url, timeout=60)
