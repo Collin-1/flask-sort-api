@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>API Validator</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: #1e293b;
+    padding: 30px;
+    border-radius: 10px;
+    width: 400px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: none;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2563eb;
+}
+
+.result {
+    margin-top: 20px;
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>API Validator</h1>
+
+    <input id="email" type="email" placeholder="Enter your email" />
+    <input id="url" type="text" placeholder="Enter your API URL (…/sort)" />
+
+    <button onclick="validate()">Validate</button>
+
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+async function validate() {
+    const email = document.getElementById("email").value;
+    const url = document.getElementById("url").value;
+    const resultDiv = document.getElementById("result");
+
+    if (!email || !url) {
+        resultDiv.innerText = "Please enter both email and API URL.";
+        return;
+    }
+
+    const validatorUrl =
+        `https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task?url=${encodeURIComponent(url)}&email=${encodeURIComponent(email)}`;
+
+    resultDiv.innerText = "Validating...";
+
+    try {
+        const response = await fetch(validatorUrl);
+        const data = await response.json();
+        resultDiv.innerText = JSON.stringify(data, null, 2);
+    } catch (error) {
+        resultDiv.innerText = "Error: " + error.message;
+    }
+}
+</script>
+
+</body>
+</html>
