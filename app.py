@@ -44,7 +44,7 @@ def validate():
 
     validator_base = "https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task"
     qs = urllib.parse.urlencode({"url": url, "email": email})
-    validator_url = f"{validator_base}?{qs}"
+    validator_url = f"https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task?url=https://{url}&email={email}"
 
     try:
         r = requests.get(validator_url, timeout=60)
