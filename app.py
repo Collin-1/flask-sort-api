@@ -37,14 +37,20 @@ def validate():
     if not email or not url:
         return jsonify({"error": "Missing email or url"}), 400
 
+    # basic SSRF guard to avoid proxying non-http(s) schemes
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        return jsonify({"error": "url must start with http or https"}), 400
+
     validator_base = "https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task"
-    qs = urllib.parse.urlencode({"url": url, "email": email})
-    validator_url = f"{validator_base}?{qs}"
 
     try:
-        r = requests.get(validator_url, timeout=20)
+        # let requests handle encoding; easier to inspect in logs if needed
+        r = requests.get(validator_base, params={"url": url, "email": email}, timeout=30)
         # return exactly what the validator returns
         return (r.text, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
+    except requests.Timeout:
+        return jsonify({"error": "Validator request timed out"}), 504
     except requests.RequestException as e:
         return jsonify({"error": f"Validator request failed: {str(e)}"}), 502
 
