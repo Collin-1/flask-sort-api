@@ -1,8 +1,33 @@
 from flask import Flask, request, jsonify, render_template
 import urllib.parse
 import requests
+import threading
+import uuid
 
 app = Flask(__name__)
+VALIDATION_JOBS = {}
+
+
+def _run_validator_job(job_id, email, url):
+    validator_base = "https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task"
+    try:
+        r = requests.get(validator_base, params={"url": url, "email": email}, timeout=60)
+        VALIDATION_JOBS[job_id] = {
+            "status": "done",
+            "http_status": r.status_code,
+            "content_type": r.headers.get("Content-Type", "application/json"),
+            "body": r.text,
+        }
+    except requests.Timeout:
+        VALIDATION_JOBS[job_id] = {
+            "status": "error",
+            "error": "Validator request timed out",
+        }
+    except requests.RequestException as e:
+        VALIDATION_JOBS[job_id] = {
+            "status": "error",
+            "error": f"Validator request failed: {str(e)}",
+        }
 
 # --- BONUS UI ---
 @app.get("/")
@@ -28,38 +53,35 @@ def sort_chars():
 def health():
     return "ok", 200
 
-# --- BONUS: server-side call to the validator (avoids CORS) ---
-@app.get("/validate")
-def validate():
-    # Accept already-encoded values from the UI; normalize by decoding then re-encoding
-    raw_email = request.args.get("email", "").strip()
-    raw_url = request.args.get("url", "").strip()
-    email = urllib.parse.unquote_plus(raw_email)
-    url = urllib.parse.unquote_plus(raw_url)
+# --- BONUS: async server-side call to validator so UI can display output reliably ---
+@app.post("/validate/start")
+def validate_start():
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip()
+    url = (payload.get("url") or "").strip()
 
     if not email or not url:
         return jsonify({"error": "Missing email or url"}), 400
 
-    # basic SSRF guard to avoid proxying non-http(s) schemes
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         return jsonify({"error": "url must start with http or https"}), 400
 
-    validator_base = "https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task"
-    qs = urllib.parse.urlencode({"url": url, "email": email})
-    validator_url = f"{validator_base}?{qs}"
+    job_id = str(uuid.uuid4())
+    VALIDATION_JOBS[job_id] = {"status": "running"}
 
-    try:
-        r = requests.get(validator_url, timeout=60)
-        # lightweight server logs to debug 5xx from the validator
-        print("/validate -> validator response", r.status_code, r.headers.get("Content-Type", ""), r.text[:200])
-        # return exactly what the validator returns
-        return (r.text, r.status_code, {"Content-Type": r.headers.get("Content-Type", "application/json")})
-    except requests.Timeout:
-        return jsonify({"error": "Validator request timed out"}), 504
-    except requests.RequestException as e:
-        print("/validate -> request error", str(e))
-        return jsonify({"error": f"Validator request failed: {str(e)}"}), 502
+    worker = threading.Thread(target=_run_validator_job, args=(job_id, email, url), daemon=True)
+    worker.start()
+
+    return jsonify({"jobId": job_id}), 202
+
+
+@app.get("/validate/result/<job_id>")
+def validate_result(job_id):
+    job = VALIDATION_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": "Unknown job id"}), 404
+    return jsonify(job), 200
 
 
 if __name__ == "__main__":

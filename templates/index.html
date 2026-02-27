@@ -100,8 +100,7 @@
         <div class="card">
           <h2 style="margin: 0 0 6px">Run the Supabase validator</h2>
           <p class="muted">
-            Opens the Supabase validator URL directly with your email and API
-            URL.
+            Calls this server's validator runner and shows the result below.
           </p>
           <label>Email</label>
           <input id="email" placeholder="you@example.com" />
@@ -137,23 +136,55 @@
         }
       }
 
-      function runValidator() {
+      async function runValidator() {
         const out = document.getElementById("valOut");
         const btn = document.getElementById("btnVal");
         btn.disabled = true;
-        out.textContent = "Opening validator…";
+        out.textContent = "Validating…";
 
-        const email = encodeURIComponent(
-          document.getElementById("email").value.trim(),
-        );
-        const url = encodeURIComponent(
-          document.getElementById("apiUrl").value.trim(),
-        );
+        const email = document.getElementById("email").value.trim();
+        const url = document.getElementById("apiUrl").value.trim();
 
-        const validatorUrl = `https://yhxzjyykdsfkdrmdxgho.supabase.co/functions/v1/application-task?url=${url}&email=${email}`;
-        window.open(validatorUrl, "_blank", "noopener,noreferrer");
-        out.textContent = `Opened validator in a new tab:\n${validatorUrl}`;
-        btn.disabled = false;
+        try {
+          const startRes = await fetch("/validate/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, url }),
+          });
+          const startBody = await startRes.json();
+
+          if (!startRes.ok) {
+            out.textContent = JSON.stringify(startBody, null, 2);
+            btn.disabled = false;
+            return;
+          }
+
+          const jobId = startBody.jobId;
+          for (let i = 0; i < 90; i += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const resultRes = await fetch(`/validate/result/${jobId}`);
+            const resultBody = await resultRes.json();
+
+            if (resultBody.status === "running") {
+              out.textContent = "Validating…";
+              continue;
+            }
+
+            if (resultBody.status === "done") {
+              out.textContent = resultBody.body;
+            } else {
+              out.textContent = JSON.stringify(resultBody, null, 2);
+            }
+            btn.disabled = false;
+            return;
+          }
+
+          out.textContent = "Validation polling timed out";
+        } catch (e) {
+          out.textContent = "Error: " + e.message;
+        } finally {
+          btn.disabled = false;
+        }
       }
     </script>
   </body>
